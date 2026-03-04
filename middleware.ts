@@ -8,7 +8,8 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/api/webhooks') ||
     pathname.startsWith('/api/circle') ||
-    pathname.startsWith('/api/setup-db')
+    pathname.startsWith('/api/setup-db') ||
+    pathname.startsWith('/api/settings/env')
   ) {
     return NextResponse.next()
   }
