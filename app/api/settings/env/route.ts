@@ -4,6 +4,7 @@ import path from 'path'
 import { createClient } from '@/lib/supabase/server'
 
 const ENV_PATH = path.join(process.cwd(), '.env.local')
+const IS_VERCEL = process.env.VERCEL === '1'
 
 function readEnvFile(): Record<string, string> {
   try {
@@ -49,11 +50,12 @@ export async function GET() {
   const authError = await requireAuthIfConfigured()
   if (authError) return authError
 
-  const vars = readEnvFile()
+  const vars = IS_VERCEL ? {} : readEnvFile()
   return NextResponse.json({
-    NEXT_PUBLIC_SUPABASE_URL: vars['NEXT_PUBLIC_SUPABASE_URL'] ?? '',
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: vars['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? '',
+    NEXT_PUBLIC_SUPABASE_URL: vars['NEXT_PUBLIC_SUPABASE_URL'] ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: vars['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
     SUPABASE_SERVICE_ROLE_KEY: vars['SUPABASE_SERVICE_ROLE_KEY'] ?? '',
+    isVercel: IS_VERCEL,
   })
 }
 
@@ -63,18 +65,47 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { url, anonKey, serviceKey } = body as {
+    const { url, anonKey, serviceKey, vercelToken } = body as {
       url?: string
       anonKey?: string
       serviceKey?: string
+      vercelToken?: string
     }
 
+    if (!url?.trim() || !anonKey?.trim() || !serviceKey?.trim()) {
+      return NextResponse.json({ error: 'Preencha todos os campos.' }, { status: 400 })
+    }
+
+    if (IS_VERCEL) {
+      if (!vercelToken?.trim()) {
+        return NextResponse.json({ error: 'Vercel Token é obrigatório no ambiente Vercel.' }, { status: 400 })
+      }
+
+      const projectId = process.env.VERCEL_PROJECT_ID
+      if (!projectId) {
+        return NextResponse.json({ error: 'VERCEL_PROJECT_ID não encontrado.' }, { status: 500 })
+      }
+
+      const teamId = process.env.VERCEL_TEAM_ID || undefined
+
+      const { upsertVercelEnvVar, triggerVercelRedeploy } = await import('@/lib/vercel/api')
+
+      await upsertVercelEnvVar(vercelToken, projectId, 'NEXT_PUBLIC_SUPABASE_URL', url.trim(), teamId)
+      await upsertVercelEnvVar(vercelToken, projectId, 'NEXT_PUBLIC_SUPABASE_ANON_KEY', anonKey.trim(), teamId)
+      await upsertVercelEnvVar(vercelToken, projectId, 'SUPABASE_SERVICE_ROLE_KEY', serviceKey.trim(), teamId)
+      await triggerVercelRedeploy(vercelToken, projectId, teamId)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Variáveis salvas. Redeploy iniciado no Vercel.',
+      })
+    }
+
+    // Self-hosted: escrever .env.local
     const current = readEnvFile()
-
-    if (url !== undefined && url.trim()) current['NEXT_PUBLIC_SUPABASE_URL'] = url.trim()
-    if (anonKey !== undefined && anonKey.trim()) current['NEXT_PUBLIC_SUPABASE_ANON_KEY'] = anonKey.trim()
-    if (serviceKey !== undefined && serviceKey.trim()) current['SUPABASE_SERVICE_ROLE_KEY'] = serviceKey.trim()
-
+    current['NEXT_PUBLIC_SUPABASE_URL'] = url.trim()
+    current['NEXT_PUBLIC_SUPABASE_ANON_KEY'] = anonKey.trim()
+    current['SUPABASE_SERVICE_ROLE_KEY'] = serviceKey.trim()
     writeEnvFile(current)
 
     return NextResponse.json({
@@ -83,6 +114,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Env write error:', error)
-    return NextResponse.json({ error: 'Erro ao salvar' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Erro ao salvar'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

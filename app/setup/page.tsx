@@ -1,14 +1,31 @@
 'use client'
 
-import { useState } from 'react'
-import { Eye, EyeOff, CheckCircle, ExternalLink } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Eye, EyeOff, CheckCircle, ExternalLink, RefreshCw } from 'lucide-react'
 
 export default function SetupPage() {
-  const [form, setForm] = useState({ url: '', anonKey: '', serviceKey: '' })
-  const [show, setShow] = useState({ anon: false, service: false })
+  const [form, setForm] = useState({ url: '', anonKey: '', serviceKey: '', vercelToken: '' })
+  const [show, setShow] = useState({ anon: false, service: false, token: false })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isVercel, setIsVercel] = useState(false)
+  const [loadingEnv, setLoadingEnv] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/settings/env')
+      .then(r => r.json())
+      .then(data => {
+        setIsVercel(!!data.isVercel)
+        setForm(f => ({
+          ...f,
+          url: data.NEXT_PUBLIC_SUPABASE_URL ?? '',
+          anonKey: data.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+        }))
+      })
+      .catch(() => {})
+      .finally(() => setLoadingEnv(false))
+  }, [])
 
   function set(key: keyof typeof form, value: string) {
     setForm(p => ({ ...p, [key]: value }))
@@ -19,13 +36,24 @@ export default function SetupPage() {
       setError('Preencha todos os campos antes de salvar.')
       return
     }
+    if (isVercel && !form.vercelToken.trim()) {
+      setError('Cole o Vercel Token para salvar no ambiente Vercel.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
+      const body: Record<string, string> = {
+        url: form.url,
+        anonKey: form.anonKey,
+        serviceKey: form.serviceKey,
+      }
+      if (isVercel) body.vercelToken = form.vercelToken
+
       const res = await fetch('/api/settings/env', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: form.url, anonKey: form.anonKey, serviceKey: form.serviceKey }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (res.ok) {
@@ -128,6 +156,40 @@ export default function SetupPage() {
                     </button>
                   </div>
                 </div>
+
+                {/* Campo Vercel Token — só aparece no Vercel */}
+                {!loadingEnv && isVercel && (
+                  <div className="border-t border-[#1a1a1a] pt-3 mt-1">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[10px] text-white/30 uppercase tracking-wider">Vercel Token</label>
+                      <a
+                        href="https://vercel.com/account/tokens"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[10px] text-white/30 hover:text-white transition-colors"
+                      >
+                        <ExternalLink size={10} />
+                        Gerar token
+                      </a>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={show.token ? 'text' : 'password'}
+                        value={form.vercelToken}
+                        onChange={e => set('vercelToken', e.target.value)}
+                        placeholder="Personal Access Token do Vercel"
+                        className="input-field font-mono text-xs pr-10"
+                      />
+                      <button type="button" onClick={() => setShow(p => ({ ...p, token: !p.token }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors">
+                        {show.token ? <EyeOff size={13} /> : <Eye size={13} />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-white/25 mt-1.5">
+                      Usado apenas nessa operação para configurar as env vars via API do Vercel.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {error && (
@@ -136,7 +198,7 @@ export default function SetupPage() {
 
               <button
                 onClick={handleSave}
-                disabled={saving || saved}
+                disabled={saving || saved || loadingEnv}
                 className="mt-4 w-full bg-white text-black text-sm font-medium py-2.5 hover:bg-white/90 transition-colors disabled:opacity-50"
               >
                 {saving ? 'Salvando...' : saved ? '✓ Salvo' : 'Salvar Credenciais'}
@@ -159,21 +221,36 @@ export default function SetupPage() {
           </div>
         </div>
 
-        {/* Step 4 - reiniciar */}
+        {/* Step 4 - resultado */}
         {saved && (
-          <div className="border border-green-800/40 bg-green-950/10 px-5 py-4">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle size={14} className="text-green-400" />
-              <span className="text-sm font-medium text-green-400">Credenciais salvas!</span>
+          isVercel ? (
+            <div className="border border-green-800/40 bg-green-950/10 px-5 py-4">
+              <div className="flex items-center gap-2 mb-2">
+                <RefreshCw size={14} className="text-green-400 animate-spin" />
+                <span className="text-sm font-medium text-green-400">Configurações salvas!</span>
+              </div>
+              <p className="text-xs text-green-400/70 mb-1">
+                O site está sendo redeployado no Vercel (1–2 min).
+              </p>
+              <p className="text-xs text-green-400/50">
+                Após concluir, acesse <span className="font-mono text-green-400/70">/login</span> para entrar.
+              </p>
             </div>
-            <p className="text-xs text-green-400/70 mb-3">Reinicie o servidor para aplicar:</p>
-            <div className="bg-black/40 border border-green-900/30 px-3 py-2 font-mono text-xs text-green-300/70">
-              npm start
+          ) : (
+            <div className="border border-green-800/40 bg-green-950/10 px-5 py-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle size={14} className="text-green-400" />
+                <span className="text-sm font-medium text-green-400">Credenciais salvas!</span>
+              </div>
+              <p className="text-xs text-green-400/70 mb-3">Reinicie o servidor para aplicar:</p>
+              <div className="bg-black/40 border border-green-900/30 px-3 py-2 font-mono text-xs text-green-300/70">
+                npm start
+              </div>
+              <p className="text-xs text-green-400/50 mt-2">Depois acesse{' '}
+                <span className="font-mono text-green-400/70">localhost:3000/login</span>
+              </p>
             </div>
-            <p className="text-xs text-green-400/50 mt-2">Depois acesse{' '}
-              <span className="font-mono text-green-400/70">localhost:3000/login</span>
-            </p>
-          </div>
+          )
         )}
 
         <p className="text-center text-white/15 text-xs mt-8">
