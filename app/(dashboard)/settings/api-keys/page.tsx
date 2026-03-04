@@ -1,130 +1,66 @@
-import { createClient } from '@/lib/supabase/server'
 import PageHeader from '@/components/ui/PageHeader'
-import ApiKeyForm from '@/components/settings/ApiKeyForm'
-import CircleSyncButton from './CircleSyncButton'
-import HotmartImportButton from './HotmartImportButton'
-import SupabaseInfoCard from '@/components/settings/SupabaseInfoCard'
-import { Key, ClipboardList, Zap, Users, Webhook } from 'lucide-react'
+import { Link2, Users, Webhook, Zap, ClipboardList, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-const services = [
+const settingsCards = [
   {
-    id: 'hotmart' as const,
-    label: 'Hotmart',
-    description: 'Integração com a plataforma Hotmart para webhooks e sincronização de compras.',
-    fields: [
-      { key: 'key_name', label: 'Nome da Chave', placeholder: 'hotmart-api-key' },
-      { key: 'key_value', label: 'Client Secret / Webhook Secret', placeholder: 'hs_xxx...', secret: true },
-    ],
-    extraConfig: [
-      { key: 'client_id', label: 'Client ID', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
-      { key: 'client_secret', label: 'Client Secret (OAuth)', placeholder: 'xxxxxxxxxxxxxxxx', secret: true },
-    ],
+    href: '/integrations',
+    icon: Link2,
+    title: 'Integrações',
+    description: 'Configure Hotmart, TMB e Circle',
   },
   {
-    id: 'tmb' as const,
-    label: 'The Members Place',
-    description: 'Integração com TMB para gerenciamento de membros.',
-    fields: [
-      { key: 'key_name', label: 'Nome da Chave', placeholder: 'tmb-api-key' },
-      { key: 'key_value', label: 'API Key / Webhook Secret', placeholder: 'tmb_xxx...', secret: true },
-    ],
-    extraConfig: [],
+    href: '/settings/admins',
+    icon: Users,
+    title: 'Admins',
+    description: 'Gerencie administradores e permissões',
   },
   {
-    id: 'circle' as const,
-    label: 'Circle',
-    description: 'Integração com Circle usando Admin API (plano Business). Não inclui Data API.',
-    fields: [
-      { key: 'key_name', label: 'Nome da Chave', placeholder: 'circle-api-token' },
-      { key: 'key_value', label: 'API Token', placeholder: 'cir_xxx...', secret: true },
-    ],
-    extraConfig: [
-      { key: 'community_id', label: 'Community ID', placeholder: '12345' },
-      { key: 'webhook_secret', label: 'Webhook Secret', placeholder: 'whsec_xxx...', secret: true },
-    ],
+    href: '/settings/webhooks',
+    icon: Webhook,
+    title: 'Webhooks',
+    description: 'Notifique serviços externos em tempo real',
+  },
+  {
+    href: '/settings/automations',
+    icon: Zap,
+    title: 'Automações',
+    description: 'Regras automáticas de tagging e ações',
+  },
+  {
+    href: '/settings/audit-log',
+    icon: ClipboardList,
+    title: 'Audit Log',
+    description: 'Log de ações dos administradores',
   },
 ]
 
-export default async function ApiKeysPage() {
-  const supabase = await createClient()
-  const { data: apiKeys } = await supabase.from('api_keys').select('*')
-
-  const keyMap = Object.fromEntries(
-    (apiKeys ?? []).map(k => [k.service, k])
-  )
-
+export default function SettingsPage() {
   return (
     <div>
       <PageHeader
-        title="Chaves de API"
-        description="Configure as integrações com plataformas externas"
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/settings/admins"
-              className="flex items-center gap-1.5 text-xs border border-[#222] px-3 py-1.5 text-white/50 hover:text-white hover:border-[#333] transition-colors"
-            >
-              <Users size={12} />
-              Admins
-            </Link>
-            <Link
-              href="/settings/webhooks"
-              className="flex items-center gap-1.5 text-xs border border-[#222] px-3 py-1.5 text-white/50 hover:text-white hover:border-[#333] transition-colors"
-            >
-              <Webhook size={12} />
-              Webhooks
-            </Link>
-            <Link
-              href="/settings/automations"
-              className="flex items-center gap-1.5 text-xs border border-[#222] px-3 py-1.5 text-white/50 hover:text-white hover:border-[#333] transition-colors"
-            >
-              <Zap size={12} />
-              Automações
-            </Link>
-            <Link
-              href="/settings/audit-log"
-              className="flex items-center gap-1.5 text-xs border border-[#222] px-3 py-1.5 text-white/50 hover:text-white hover:border-[#333] transition-colors"
-            >
-              <ClipboardList size={12} />
-              Log de Auditoria
-            </Link>
-          </div>
-        }
+        title="Configurações"
+        description="Gerencie administradores, automações e integrações do sistema"
       />
 
-      <div className="space-y-6 max-w-2xl">
-        <SupabaseInfoCard />
-
-        {services.map(service => (
-          <div key={service.id} className="bg-[#0a0a0a] border border-[#1a1a1a]">
-            <div className="flex items-start justify-between px-5 py-4 border-b border-[#1a1a1a]">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Key size={14} className="text-white/40" />
-                  <span className="text-sm font-medium text-white">{service.label}</span>
-                  {keyMap[service.id] && (
-                    <span className="text-[10px] px-1.5 py-0.5 border border-green-900/40 bg-green-950/20 text-green-400">
-                      Configurado
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-white/30">{service.description}</p>
-              </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+        {settingsCards.map(({ href, icon: Icon, title, description }) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex items-center gap-4 p-4 bg-[#0a0a0a] border border-[#1a1a1a] hover:border-[#333] transition-colors group"
+          >
+            <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border border-[#222] group-hover:border-[#444] transition-colors">
+              <Icon size={16} className="text-white/40 group-hover:text-white/60 transition-colors" />
             </div>
-            <div className="p-5">
-              <ApiKeyForm
-                service={service.id}
-                fields={service.fields}
-                extraConfigFields={service.extraConfig}
-                existingKey={keyMap[service.id] ?? null}
-              />
-              {service.id === 'circle' && <CircleSyncButton />}
-              {service.id === 'hotmart' && <HotmartImportButton />}
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-white">{title}</div>
+              <div className="text-xs text-white/30 mt-0.5">{description}</div>
             </div>
-          </div>
+            <ChevronRight size={14} className="text-white/20 group-hover:text-white/40 flex-shrink-0 transition-colors" />
+          </Link>
         ))}
       </div>
     </div>
