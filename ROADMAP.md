@@ -12,23 +12,12 @@ MRR/métricas SaaS no dashboard, pipeline Kanban (/pipeline), templates de relat
 
 ---
 
-## 🟢 Fase 6 — Futuro
+## ✅ Fase 6 — Concluída
+Múltiplos admins com roles (super_admin/admin/viewer), webhooks de saída configuráveis e PWA (manifest + service worker) implementados.
 
-### 9. Múltiplos admins com permissões
-- Admin pode ser atribuído a um subconjunto de membros
-- Role: super_admin (tudo), admin (só seus membros), viewer (só leitura)
-- Filtro automático de membros por admin logado
-
-### 10. Webhooks de saída / notificações
-- Configurar URL de destino (Slack, WhatsApp via Z-API, Discord)
-- Eventos: novo membro, chargeback, cancelamento, inadimplência
-- Tabela `webhook_subscriptions` com evento + URL + headers
-
-### 11. App mobile (PWA)
-- manifest.json + service worker
-- Ícone instalável no celular
-- Páginas otimizadas para touch
-- Notificações push para alertas
+> **Notas de setup:**
+> - Rodar `supabase/migrations/005_admin_roles.sql` e `006_webhook_subscriptions.sql` no Supabase SQL Editor
+> - Para PWA funcionar com ícone, adicionar `public/icons/icon-192.png` e `public/icons/icon-512.png`
 
 ---
 

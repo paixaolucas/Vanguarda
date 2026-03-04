@@ -4,7 +4,7 @@ import ApiKeyForm from '@/components/settings/ApiKeyForm'
 import CircleSyncButton from './CircleSyncButton'
 import HotmartImportButton from './HotmartImportButton'
 import SupabaseInfoCard from '@/components/settings/SupabaseInfoCard'
-import { Key, ClipboardList, Zap } from 'lucide-react'
+import { Key, ClipboardList, Zap, Users, Webhook } from 'lucide-react'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -62,7 +62,21 @@ export default async function ApiKeysPage() {
         title="Chaves de API"
         description="Configure as integrações com plataformas externas"
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/settings/admins"
+              className="flex items-center gap-1.5 text-xs border border-[#222] px-3 py-1.5 text-white/50 hover:text-white hover:border-[#333] transition-colors"
+            >
+              <Users size={12} />
+              Admins
+            </Link>
+            <Link
+              href="/settings/webhooks"
+              className="flex items-center gap-1.5 text-xs border border-[#222] px-3 py-1.5 text-white/50 hover:text-white hover:border-[#333] transition-colors"
+            >
+              <Webhook size={12} />
+              Webhooks
+            </Link>
             <Link
               href="/settings/automations"
               className="flex items-center gap-1.5 text-xs border border-[#222] px-3 py-1.5 text-white/50 hover:text-white hover:border-[#333] transition-colors"

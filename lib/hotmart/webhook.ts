@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { createServiceClient } from '@/lib/supabase/server'
+import { dispatchWebhook } from '@/lib/webhooks/dispatch'
 
 export function validateHotmartSignature(
   payload: string,
@@ -120,4 +121,16 @@ export async function processHotmartEvent(payload: Record<string, unknown>) {
     transaction_date: new Date().toISOString(),
     raw_payload: payload,
   })
+
+  // Dispatch outgoing webhooks
+  const webhookPayload = { member_id: member.id, email, name: name ?? null, amount: amount ?? null, platform: 'hotmart' }
+  if (eventType === 'purchase' && txStatus === 'approved') {
+    await dispatchWebhook(!existingMember ? 'member.created' : 'member.created', webhookPayload)
+  } else if (eventType === 'chargeback') {
+    await dispatchWebhook('member.chargeback', webhookPayload)
+  } else if (eventType === 'cancellation') {
+    await dispatchWebhook('member.cancelled', webhookPayload)
+  } else if (status === 'inadimplente') {
+    await dispatchWebhook('member.delinquent', webhookPayload)
+  }
 }

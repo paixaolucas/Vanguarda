@@ -7,6 +7,7 @@ import Pagination from '@/components/Pagination'
 import { Users, Download } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import { getAdminContext } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +28,7 @@ export default async function MembersPage({
 }) {
   const { search, status, origin, engagement, page } = await searchParams
   const currentPage = Math.max(1, parseInt(page ?? '1', 10))
-  const supabase = await createClient()
+  const [supabase, adminCtx] = await Promise.all([createClient(), getAdminContext()])
 
   // For low engagement filter: get member_ids with circle activity in last 30 days
   let lowEngagementIds: string[] | null = null
@@ -74,6 +75,12 @@ export default async function MembersPage({
   if (lowEngagementIds) {
     query = query.in('id', lowEngagementIds)
     countQuery = countQuery.in('id', lowEngagementIds)
+  }
+
+  // Role-based filter: 'admin' sees only assigned members
+  if (adminCtx?.role === 'admin') {
+    query = query.eq('assigned_admin_id', adminCtx.adminId)
+    countQuery = countQuery.eq('assigned_admin_id', adminCtx.adminId)
   }
 
   const [{ data: members }, { count: totalItems }] = await Promise.all([query, countQuery])
