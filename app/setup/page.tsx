@@ -152,12 +152,8 @@ export default function SetupPage() {
             <div>
               <p className="text-sm font-medium text-white mb-1">Criar usuário admin no Supabase</p>
               <p className="text-xs text-white/40 mb-2">Authentication → Users → Add user:</p>
-              <div className="bg-[#111] border border-[#222] px-3 py-2 text-xs font-mono text-white/60 space-y-0.5">
-                <p>Email: <span className="text-white">admin@vanguarda.com</span></p>
-                <p>Senha: <span className="text-white">vanguarda2024</span></p>
-              </div>
               <p className="text-xs text-white/40 mt-2">
-                Depois execute <code className="text-white/50 font-mono">supabase/seed-admin.sql</code> substituindo o UUID do usuário criado.
+                Crie um usuário com email e senha de sua escolha. Depois execute <code className="text-white/50 font-mono">supabase/seed-admin.sql</code> substituindo o UUID do usuário criado.
               </p>
             </div>
           </div>

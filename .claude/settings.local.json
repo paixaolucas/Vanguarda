@@ -11,7 +11,8 @@
       "Bash(xargs grep:*)",
       "Bash(cmd.exe:*)",
       "Bash(powershell:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(del:*)"
     ]
   }
 }

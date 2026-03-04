@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
+import { createClient } from '@/lib/supabase/server'
 
 const ENV_PATH = path.join(process.cwd(), '.env.local')
 
@@ -30,9 +31,25 @@ function writeEnvFile(vars: Record<string, string>) {
   fs.writeFileSync(ENV_PATH, lines + '\n', 'utf-8')
 }
 
+// Se Supabase já está configurado, exige sessão autenticada
+async function requireAuthIfConfigured(): Promise<NextResponse | null> {
+  const configured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  if (!configured) return null // setup inicial — permitir sem auth
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  } catch {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+  return null
+}
+
 export async function GET() {
+  const authError = await requireAuthIfConfigured()
+  if (authError) return authError
+
   const vars = readEnvFile()
-  // Return only Supabase keys, masked where sensitive
   return NextResponse.json({
     NEXT_PUBLIC_SUPABASE_URL: vars['NEXT_PUBLIC_SUPABASE_URL'] ?? '',
     NEXT_PUBLIC_SUPABASE_ANON_KEY: vars['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? '',
@@ -41,6 +58,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const authError = await requireAuthIfConfigured()
+  if (authError) return authError
+
   try {
     const body = await request.json()
     const { url, anonKey, serviceKey } = body as {
