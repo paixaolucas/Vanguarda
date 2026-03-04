@@ -50,7 +50,8 @@
 | `/pipeline` | Kanban de follow-ups (Para Contatar / Em Contato / Resolvido) |
 | `/calendar` | Visão anual de eventos por membro |
 | `/import` | Importação de CSV do CRM |
-| `/settings/api-keys` | Integrações: Hotmart, TMB, Circle |
+| `/settings/api-keys` | Chaves de API e botão de importação Hotmart |
+| `/integrations` | Hub de integrações Circle, Hotmart, TMB |
 | `/settings/admins` | Gerenciar admins e roles |
 | `/settings/webhooks` | Webhooks de saída por evento |
 | `/settings/automations` | Regras automáticas de tagging |

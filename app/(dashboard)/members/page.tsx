@@ -18,7 +18,24 @@ interface SearchParams {
   status?: string
   origin?: string
   engagement?: string
+  sort?: string
   page?: string
+}
+
+function calcScore(
+  circleActivity: { member_id: string; event_type: string }[],
+  approvedTx: { member_id: string }[],
+  chargebacks: { member_id: string }[],
+  memberId: string
+): number {
+  const posts = circleActivity.filter(a => a.member_id === memberId && a.event_type === 'post_created').length
+  const comments = circleActivity.filter(a => a.member_id === memberId && a.event_type === 'comment').length
+  const approved = approvedTx.filter(t => t.member_id === memberId).length
+  const cbs = chargebacks.filter(t => t.member_id === memberId).length
+  const circleScore = Math.min(50, posts * 10 + comments * 5)
+  const financeBase = approved > 0 ? Math.min(50, approved * 10) : 0
+  const financeScore = Math.max(0, financeBase - cbs * 20)
+  return Math.min(100, circleScore + financeScore)
 }
 
 export default async function MembersPage({
@@ -26,7 +43,7 @@ export default async function MembersPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
-  const { search, status, origin, engagement, page } = await searchParams
+  const { search, status, origin, engagement, sort, page } = await searchParams
   const currentPage = Math.max(1, parseInt(page ?? '1', 10))
   const [supabase, adminCtx] = await Promise.all([createClient(), getAdminContext()])
 
@@ -83,7 +100,27 @@ export default async function MembersPage({
     countQuery = countQuery.eq('assigned_admin_id', adminCtx.adminId)
   }
 
-  const [{ data: members }, { count: totalItems }] = await Promise.all([query, countQuery])
+  const [{ data: rawMembers }, { count: totalItems }] = await Promise.all([query, countQuery])
+
+  // Score calculation — batch queries for all members on this page
+  const memberIds = (rawMembers ?? []).map(m => m.id)
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+  const [{ data: circleAct }, { data: approvedTx }, { data: cbTx }] = memberIds.length > 0
+    ? await Promise.all([
+        supabase.from('circle_activity').select('member_id, event_type').in('member_id', memberIds).gte('occurred_at', thirtyDaysAgo),
+        supabase.from('transactions').select('member_id').in('member_id', memberIds).eq('status', 'approved'),
+        supabase.from('transactions').select('member_id').in('member_id', memberIds).eq('event_type', 'chargeback'),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }]
+
+  const membersWithScore = (rawMembers ?? []).map(m => ({
+    ...m,
+    score: calcScore(circleAct ?? [], approvedTx ?? [], cbTx ?? [], m.id),
+  }))
+
+  const members = sort === 'score'
+    ? [...membersWithScore].sort((a, b) => b.score - a.score)
+    : membersWithScore
 
   const totalPages = Math.ceil((totalItems ?? 0) / PAGE_SIZE)
 
@@ -129,6 +166,23 @@ export default async function MembersPage({
                   <th className="text-left text-xs text-white/30 uppercase tracking-wider px-5 py-3 font-medium hidden md:table-cell">Status</th>
                   <th className="text-left text-xs text-white/30 uppercase tracking-wider px-5 py-3 font-medium hidden lg:table-cell">Origem</th>
                   <th className="text-left text-xs text-white/30 uppercase tracking-wider px-5 py-3 font-medium hidden xl:table-cell">Cadastro</th>
+                  <th className="text-left text-xs text-white/30 uppercase tracking-wider px-5 py-3 font-medium hidden lg:table-cell w-32">
+                    {(() => {
+                      const p = new URLSearchParams()
+                      if (search) p.set('search', search)
+                      if (status) p.set('status', status)
+                      if (origin) p.set('origin', origin)
+                      if (sort !== 'score') p.set('sort', 'score')
+                      return (
+                        <Link
+                          href={`/members${p.toString() ? `?${p}` : ''}`}
+                          className={`hover:text-white transition-colors ${sort === 'score' ? 'text-white' : ''}`}
+                        >
+                          Score {sort === 'score' ? '↓' : '↕'}
+                        </Link>
+                      )
+                    })()}
+                  </th>
                   <th className="px-5 py-3 w-8"></th>
                 </tr>
               </thead>
@@ -162,6 +216,19 @@ export default async function MembersPage({
                     </td>
                     <td className="px-5 py-3.5 text-white/30 text-xs hidden xl:table-cell">
                       {format(new Date(member.created_at), 'dd/MM/yyyy')}
+                    </td>
+                    <td className="px-5 py-3.5 hidden lg:table-cell w-32">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1 bg-[#1a1a1a] max-w-[48px]">
+                          <div
+                            className={`h-full ${member.score >= 70 ? 'bg-green-500' : member.score >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                            style={{ width: `${member.score}%` }}
+                          />
+                        </div>
+                        <span className={`text-xs font-medium ${member.score >= 70 ? 'text-green-400' : member.score >= 40 ? 'text-yellow-400' : 'text-red-400'}`}>
+                          {member.score}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-5 py-3.5">
                       <Link
