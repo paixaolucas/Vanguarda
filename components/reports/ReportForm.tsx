@@ -20,11 +20,41 @@ interface ReportFormProps {
   }
 }
 
+const TEMPLATES = [
+  {
+    key: 'mentoria',
+    label: 'Sessão de Mentoria',
+    title: 'Sessão de Mentoria — ',
+    content: '<h3>Sessão de Mentoria</h3><p><strong>Data:</strong> </p><p><strong>Tema principal:</strong> </p><h4>Pontos discutidos</h4><ul><li></li><li></li></ul><h4>Próximos passos</h4><ol><li></li><li></li></ol><h4>Observações</h4><p></p>',
+  },
+  {
+    key: 'revisao',
+    label: 'Revisão Mensal',
+    title: 'Revisão Mensal — ',
+    content: '<h3>Revisão Mensal</h3><p><strong>Período:</strong> </p><h4>Progresso</h4><p></p><h4>Obstáculos</h4><ul><li></li></ul><h4>Metas para o próximo mês</h4><ol><li></li><li></li></ol><h4>Engajamento no programa</h4><p></p>',
+  },
+  {
+    key: 'primeiro_contato',
+    label: 'Primeiro Contato',
+    title: 'Primeiro Contato — ',
+    content: '<h3>Primeiro Contato</h3><p><strong>Data:</strong> </p><p><strong>Canal:</strong> </p><h4>Situação atual</h4><p></p><h4>Objetivos com o programa</h4><ul><li></li></ul><h4>Próximas ações</h4><ol><li></li></ol>',
+  },
+]
+
 export default function ReportForm({ members, initialMemberId, report }: ReportFormProps) {
   const router = useRouter()
   const [title, setTitle] = useState(report?.title ?? '')
   const [memberId, setMemberId] = useState(report?.member_id ?? initialMemberId ?? '')
   const [content, setContent] = useState(report?.content ?? '')
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+
+  function applyTemplate(templateKey: string) {
+    const tpl = TEMPLATES.find(t => t.key === templateKey)
+    if (!tpl) return
+    setSelectedTemplate(templateKey)
+    if (!title) setTitle(tpl.title)
+    setContent(tpl.content)
+  }
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -82,6 +112,40 @@ export default function ReportForm({ members, initialMemberId, report }: ReportF
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Template selector — only for new reports */}
+      {!report && (
+        <div>
+          <label className="block text-xs font-medium text-white/60 uppercase tracking-wider mb-2">
+            Template
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {TEMPLATES.map(tpl => (
+              <button
+                key={tpl.key}
+                type="button"
+                onClick={() => applyTemplate(tpl.key)}
+                className={`text-xs px-3 py-1.5 border transition-colors ${
+                  selectedTemplate === tpl.key
+                    ? 'border-white text-white bg-white/10'
+                    : 'border-[#222] text-white/40 hover:text-white hover:border-[#333]'
+                }`}
+              >
+                {tpl.label}
+              </button>
+            ))}
+            {selectedTemplate && (
+              <button
+                type="button"
+                onClick={() => { setSelectedTemplate(null); setContent(''); setTitle('') }}
+                className="text-xs px-3 py-1.5 border border-[#222] text-white/20 hover:text-white transition-colors"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div>
         <label className="block text-xs font-medium text-white/60 uppercase tracking-wider mb-2">
           Título

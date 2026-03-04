@@ -14,6 +14,7 @@ import {
   X,
   CalendarDays,
   Upload,
+  KanbanSquare,
 } from 'lucide-react'
 import { useState } from 'react'
 import GlobalSearch from '@/components/GlobalSearch'
@@ -25,6 +26,7 @@ const navItems = [
   { href: '/financial', label: 'Financeiro', icon: DollarSign },
   { href: '/calendar', label: 'Calendário', icon: CalendarDays },
   { href: '/import', label: 'Importar CRM', icon: Upload },
+  { href: '/pipeline', label: 'Pipeline', icon: KanbanSquare },
   { href: '/settings/api-keys', label: 'Configurações', icon: Settings },
 ]
 

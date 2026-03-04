@@ -103,6 +103,86 @@ async function DashboardCharts() {
   )
 }
 
+// Deferred: SaaS metrics (MRR, churn, LTV)
+async function DashboardSaasMetrics() {
+  const supabase = await createClient()
+  const now = new Date()
+  const startThisMonth = startOfMonth(now).toISOString()
+  const endThisMonth = endOfMonth(now).toISOString()
+  const startLastMonth = startOfMonth(subMonths(now, 1)).toISOString()
+  const endLastMonth = endOfMonth(subMonths(now, 1)).toISOString()
+
+  const [
+    { data: thisMonthtx },
+    { data: lastMonthtx },
+    { count: cancellationsThisMonth },
+    { count: totalMembers },
+    { count: activeMembers },
+    { data: allRevenue },
+  ] = await Promise.all([
+    supabase.from('transactions').select('amount').eq('status', 'approved').gte('transaction_date', startThisMonth).lte('transaction_date', endThisMonth),
+    supabase.from('transactions').select('amount').eq('status', 'approved').gte('transaction_date', startLastMonth).lte('transaction_date', endLastMonth),
+    supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('event_type', 'cancellation').gte('transaction_date', startThisMonth),
+    supabase.from('members').select('*', { count: 'exact', head: true }),
+    supabase.from('members').select('*', { count: 'exact', head: true }).eq('status', 'ativo'),
+    supabase.from('transactions').select('amount').eq('status', 'approved'),
+  ])
+
+  const mrr = (thisMonthtx ?? []).reduce((s, t) => s + (t.amount ?? 0), 0)
+  const mrrLastMonth = (lastMonthtx ?? []).reduce((s, t) => s + (t.amount ?? 0), 0)
+  const mrrDelta = mrrLastMonth > 0 ? ((mrr - mrrLastMonth) / mrrLastMonth) * 100 : null
+
+  const totalRevenue = (allRevenue ?? []).reduce((s, t) => s + (t.amount ?? 0), 0)
+  const ltv = (totalMembers ?? 0) > 0 ? totalRevenue / (totalMembers ?? 1) : 0
+
+  const churnRate = (activeMembers ?? 0) > 0
+    ? (((cancellationsThisMonth ?? 0) / (activeMembers ?? 1)) * 100)
+    : 0
+
+  function fmt(v: number) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+  }
+
+  function delta(v: number | null) {
+    if (v === null) return null
+    const sign = v >= 0 ? '+' : ''
+    return `${sign}${v.toFixed(1)}%`
+  }
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {/* MRR */}
+      <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-4">
+        <p className="text-[10px] text-white/30 uppercase tracking-wider mb-1">MRR</p>
+        <p className="text-xl font-semibold text-white">{fmt(mrr)}</p>
+        {mrrDelta !== null && (
+          <p className={`text-xs mt-1 ${mrrDelta >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {delta(mrrDelta)} vs mês anterior
+          </p>
+        )}
+      </div>
+      {/* Churn Rate */}
+      <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-4">
+        <p className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Churn Rate</p>
+        <p className="text-xl font-semibold text-white">{churnRate.toFixed(1)}%</p>
+        <p className="text-xs text-white/30 mt-1">Cancelamentos este mês</p>
+      </div>
+      {/* LTV */}
+      <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-4">
+        <p className="text-[10px] text-white/30 uppercase tracking-wider mb-1">LTV Médio</p>
+        <p className="text-xl font-semibold text-white">{fmt(ltv)}</p>
+        <p className="text-xs text-white/30 mt-1">Receita / total membros</p>
+      </div>
+      {/* Receita acumulada */}
+      <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-4">
+        <p className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Receita Total</p>
+        <p className="text-xl font-semibold text-white">{fmt(totalRevenue)}</p>
+        <p className="text-xs text-white/30 mt-1">Desde o início</p>
+      </div>
+    </div>
+  )
+}
+
 // Deferred: attention alerts
 async function DashboardAlerts() {
   const supabase = await createClient()
@@ -292,6 +372,15 @@ export default async function DashboardPage() {
         </div>
       }>
         <DashboardStats />
+      </Suspense>
+
+      {/* SaaS metrics deferred */}
+      <Suspense fallback={
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[...Array(4)].map((_, i) => <SkeletonBlock key={i} className="h-20" />)}
+        </div>
+      }>
+        <DashboardSaasMetrics />
       </Suspense>
 
       {/* Alerts deferred */}

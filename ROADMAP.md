@@ -5,33 +5,10 @@ Timeline unificada, alertas de atenção, score de engajamento e busca global (C
 
 ---
 
-## 🟡 Fase 5 — Médio impacto
+## ✅ Fase 5 — Concluída
+MRR/métricas SaaS no dashboard, pipeline Kanban (/pipeline), templates de relatórios e automações de tags (/settings/automations) implementados.
 
-### 5. MRR e métricas SaaS no dashboard
-- MRR (Receita Recorrente Mensal)
-- Churn Rate mensal
-- LTV médio por membro
-- Comparativo mês anterior (delta %)
-Nova seção no dashboard abaixo dos stat cards existentes.
-
-### 6. Pipeline de follow-ups (Kanban)
-Nova página `/pipeline` com colunas: "Para Contatar", "Em Contato", "Resolvido".
-Tabela `follow_ups` no Supabase: member_id, status, assigned_to, notes, due_date.
-Drag & drop entre colunas (ou botões simples para mover).
-
-### 7. Relatórios com templates
-Templates pré-definidos na página /reports/new:
-- "Sessão de Mentoria" (campos: data, tema, próximos passos)
-- "Revisão Mensal" (campos: progresso, obstáculos, metas)
-- "Primeiro Contato"
-Selecionar template pré-preenche o editor com estrutura.
-
-### 8. Tags automáticas
-Página /settings/automations com regras configuráveis:
-- "Se sem posts no Circle em 30 dias → aplicar tag Inativo"
-- "Se chargeback → aplicar tag Risco"
-- "Se membro há menos de 7 dias → aplicar tag Novo Membro"
-Cron job ou trigger manual que roda as regras.
+> **Nota:** Rodar `supabase/migrations/004_follow_ups.sql` no Supabase SQL Editor antes de usar o Pipeline.
 
 ---
 
