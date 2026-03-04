@@ -16,6 +16,7 @@ interface SearchParams {
   search?: string
   status?: string
   origin?: string
+  engagement?: string
   page?: string
 }
 
@@ -24,9 +25,29 @@ export default async function MembersPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
-  const { search, status, origin, page } = await searchParams
+  const { search, status, origin, engagement, page } = await searchParams
   const currentPage = Math.max(1, parseInt(page ?? '1', 10))
   const supabase = await createClient()
+
+  // For low engagement filter: get member_ids with circle activity in last 30 days
+  let lowEngagementIds: string[] | null = null
+  if (engagement === 'low') {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const { data: recentActivity } = await supabase
+      .from('circle_activity')
+      .select('member_id')
+      .gte('occurred_at', thirtyDaysAgo)
+    const activeIds = new Set((recentActivity ?? []).map(a => a.member_id))
+    // Get all active member ids
+    const { data: activeMembers } = await supabase
+      .from('members')
+      .select('id')
+      .eq('status', 'ativo')
+    lowEngagementIds = (activeMembers ?? [])
+      .map(m => m.id)
+      .filter(id => !activeIds.has(id))
+    if (lowEngagementIds.length === 0) lowEngagementIds = ['00000000-0000-0000-0000-000000000000']
+  }
 
   let countQuery = supabase
     .from('members')
@@ -49,6 +70,10 @@ export default async function MembersPage({
   if (origin) {
     query = query.eq('origin', origin)
     countQuery = countQuery.eq('origin', origin)
+  }
+  if (lowEngagementIds) {
+    query = query.in('id', lowEngagementIds)
+    countQuery = countQuery.in('id', lowEngagementIds)
   }
 
   const [{ data: members }, { count: totalItems }] = await Promise.all([query, countQuery])

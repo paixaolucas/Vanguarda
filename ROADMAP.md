@@ -1,32 +1,7 @@
 # Vanguarda — Roadmap de Melhorias
 
-## 🔴 Fase 4 — Alto impacto (implementar primeiro)
-
-### 1. Timeline unificada do membro
-Linha do tempo cronológica única no perfil do membro mostrando tudo:
-transações, atividade Circle, notas, reports, mudanças de status — em ordem de data.
-Hoje cada seção fica separada; a timeline unifica tudo em uma view só.
-
-### 2. Alertas de atenção no dashboard
-Painel "Requer Atenção" na home com:
-- Membros inadimplentes há +7 dias
-- Membros sem acesso ao Circle há +30 dias
-- Chargebacks recentes sem resolução
-Query: members com status=inadimplente, circle_activity sem eventos recentes, transactions com event_type=chargeback recentes.
-
-### 3. Score de engajamento
-Score automático por membro (0–100) baseado em:
-- Posts no Circle (circle_activity event_type=post_created)
-- Comentários (event_type=comment)
-- Transações em dia (status=approved, sem chargebacks)
-Aparece no perfil e na lista de membros com filtro "Baixo Engajamento".
-Coluna `engagement_score` calculada on-the-fly ou salva em members.
-
-### 4. Busca global
-Barra de busca no topo do Sidebar (ou header mobile).
-Busca em tempo real por: nome, email, telefone → retorna membros.
-Atalho de teclado: Cmd/Ctrl+K.
-Componente client-side com debounce, dropdown de resultados.
+## ✅ Fase 4 — Concluída
+Timeline unificada, alertas de atenção, score de engajamento e busca global (Cmd/Ctrl+K) foram implementados.
 
 ---
 

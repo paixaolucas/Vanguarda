@@ -16,6 +16,7 @@ import {
   Upload,
 } from 'lucide-react'
 import { useState } from 'react'
+import GlobalSearch from '@/components/GlobalSearch'
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -57,6 +58,11 @@ export default function Sidebar() {
             <p className="text-white/30 text-[10px] uppercase tracking-widest">Overlens</p>
           </div>
         </div>
+      </div>
+
+      {/* Search */}
+      <div className="px-3 py-2 border-b border-[#1a1a1a]">
+        <GlobalSearch />
       </div>
 
       {/* Navigation */}

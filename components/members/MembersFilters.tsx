@@ -12,6 +12,7 @@ export default function MembersFilters() {
   const [search, setSearch] = useState(searchParams.get('search') ?? '')
   const status = searchParams.get('status') ?? ''
   const origin = searchParams.get('origin') ?? ''
+  const engagement = searchParams.get('engagement') ?? ''
 
   const updateParams = useCallback(
     (updates: Record<string, string>) => {
@@ -42,7 +43,7 @@ export default function MembersFilters() {
     })
   }
 
-  const hasFilters = search || status || origin
+  const hasFilters = search || status || origin || engagement
 
   return (
     <div className="flex flex-col sm:flex-row gap-3">
@@ -89,6 +90,16 @@ export default function MembersFilters() {
         <option value="">Todas as origens</option>
         <option value="hotmart">Hotmart</option>
         <option value="tmb">TMB</option>
+      </select>
+
+      {/* Engagement Filter */}
+      <select
+        value={engagement}
+        onChange={e => updateParams({ engagement: e.target.value })}
+        className="bg-[#0a0a0a] border border-[#222] text-white py-2.5 px-3 text-sm focus:outline-none focus:border-white/30 appearance-none cursor-pointer"
+      >
+        <option value="">Todos os engajamentos</option>
+        <option value="low">Baixo Engajamento</option>
       </select>
 
       {hasFilters && (

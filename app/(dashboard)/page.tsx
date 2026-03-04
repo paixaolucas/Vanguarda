@@ -3,7 +3,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import StatCard from '@/components/ui/StatCard'
 import Badge, { statusBadge, statusLabel } from '@/components/ui/Badge'
 import BarChart from '@/components/BarChart'
-import { Users, TrendingDown, DollarSign, UserPlus, Activity, ArrowRight, BarChart2 } from 'lucide-react'
+import { Users, TrendingDown, DollarSign, UserPlus, Activity, ArrowRight, BarChart2, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -98,6 +98,92 @@ async function DashboardCharts() {
           <span className="text-xs text-white/30 ml-auto">últimos 6 meses</span>
         </div>
         <BarChart data={membersByMonth} formatValue={v => String(v)} />
+      </div>
+    </div>
+  )
+}
+
+// Deferred: attention alerts
+async function DashboardAlerts() {
+  const supabase = await createClient()
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+  const [
+    { data: inadimplentes },
+    { data: recentCircleActivity },
+    { data: activeMembers },
+    { data: chargebacks },
+  ] = await Promise.all([
+    supabase.from('members').select('id, name, email, updated_at').eq('status', 'inadimplente').lt('updated_at', sevenDaysAgo).limit(5),
+    supabase.from('circle_activity').select('member_id').gte('occurred_at', thirtyDaysAgo),
+    supabase.from('members').select('id, name, email').eq('status', 'ativo').limit(200),
+    supabase.from('transactions').select('id, member_id, created_at, members(name, email)').eq('event_type', 'chargeback').order('created_at', { ascending: false }).limit(5),
+  ])
+
+  const recentCircleMemberIds = new Set((recentCircleActivity ?? []).map(a => a.member_id))
+  const inactiveOnCircle = (activeMembers ?? [])
+    .filter(m => !recentCircleMemberIds.has(m.id))
+    .slice(0, 5)
+
+  const totalAlerts = (inadimplentes?.length ?? 0) + inactiveOnCircle.length + (chargebacks?.length ?? 0)
+
+  if (totalAlerts === 0) return null
+
+  return (
+    <div className="mb-6">
+      <div className="bg-[#0a0a0a] border border-[#1a1a1a]">
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-[#1a1a1a]">
+          <AlertTriangle size={14} className="text-yellow-400" />
+          <span className="text-sm font-medium text-white">Requer Atenção</span>
+          <span className="ml-auto text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-800/40 px-2 py-0.5">
+            {totalAlerts} {totalAlerts === 1 ? 'item' : 'itens'}
+          </span>
+        </div>
+
+        <div className="divide-y divide-[#111]">
+          {/* Inadimplentes > 7 dias */}
+          {(inadimplentes ?? []).map(m => (
+            <Link key={m.id} href={`/members/${m.id}`} className="flex items-start gap-3 px-5 py-3 hover:bg-[#111] transition-colors">
+              <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-red-400 mt-2" />
+              <div className="min-w-0">
+                <p className="text-sm text-white">{m.name ?? m.email}</p>
+                <p className="text-xs text-white/30">Inadimplente há mais de 7 dias</p>
+              </div>
+              <ArrowRight size={12} className="text-white/20 flex-shrink-0 mt-1.5" />
+            </Link>
+          ))}
+
+          {/* Sem acesso Circle > 30 dias */}
+          {inactiveOnCircle.map(m => (
+            <Link key={m.id} href={`/members/${m.id}`} className="flex items-start gap-3 px-5 py-3 hover:bg-[#111] transition-colors">
+              <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-yellow-400 mt-2" />
+              <div className="min-w-0">
+                <p className="text-sm text-white">{m.name ?? m.email}</p>
+                <p className="text-xs text-white/30">Sem atividade no Circle há mais de 30 dias</p>
+              </div>
+              <ArrowRight size={12} className="text-white/20 flex-shrink-0 mt-1.5" />
+            </Link>
+          ))}
+
+          {/* Chargebacks recentes */}
+          {(chargebacks ?? []).map(cb => {
+            const rawMember = cb.members
+            const member = (Array.isArray(rawMember) ? rawMember[0] : rawMember) as { name: string | null; email: string | null } | null
+            return (
+              <Link key={cb.id} href={`/members/${cb.member_id}`} className="flex items-start gap-3 px-5 py-3 hover:bg-[#111] transition-colors">
+                <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-orange-400 mt-2" />
+                <div className="min-w-0">
+                  <p className="text-sm text-white">{member?.name ?? member?.email ?? 'Membro desconhecido'}</p>
+                  <p className="text-xs text-white/30">
+                    Chargeback em {cb.created_at ? format(new Date(cb.created_at), 'dd/MM/yyyy', { locale: ptBR }) : '—'}
+                  </p>
+                </div>
+                <ArrowRight size={12} className="text-white/20 flex-shrink-0 mt-1.5" />
+              </Link>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
@@ -206,6 +292,11 @@ export default async function DashboardPage() {
         </div>
       }>
         <DashboardStats />
+      </Suspense>
+
+      {/* Alerts deferred */}
+      <Suspense fallback={null}>
+        <DashboardAlerts />
       </Suspense>
 
       {/* Charts deferred */}
